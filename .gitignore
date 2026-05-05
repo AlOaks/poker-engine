@@ -1,0 +1,41 @@
+# Binaries and build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/poker-engine
+
+# Tests and coverage
+*.test
+*.out
+coverage.*
+covprofile
+profile.cov
+
+# Go workspace (local multi-module)
+go.work
+go.work.sum
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies (uncomment if you commit vendor)
+# vendor/
+
+# Logs and temp
+*.log
+tmp/
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
