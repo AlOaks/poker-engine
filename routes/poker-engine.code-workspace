@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../../poker-sim"
+		},
+		{
+			"path": "../../../../../rust/trading-signal-engine"
+		}
+	],
+	"settings": {}
+}

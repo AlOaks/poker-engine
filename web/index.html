@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --felt: #1a3a2a;
+    --felt-dark: #122a1e;
+    --felt-light: #234d38;
+    --gold: #c9a84c;
+    --gold-dim: #8a6f30;
+    --card-bg: #fdf8f0;
+    --card-border: #d4c9b0;
+    --text-primary: #f0ead8;
+    --text-muted: #8a9e8a;
+    --chip-red: #c0392b;
+    --chip-blue: #2980b9;
+    --folded-opacity: 0.4;
+    --radius: 8px;
+    --card-radius: 6px;
+  }
+
+  body {
+    background: var(--felt-dark);
+    background-image: 
+      radial-gradient(ellipse at 50% 50%, #1f4a32 0%, #0f2018 100%);
+    min-height: 100vh;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+    overflow-x: hidden;
+  }
+
+  .table-felt {
+    width: 100%;
+    max-width: 1100px;
+    background: var(--felt);
+    border-radius: 200px;
+    border: 12px solid #0a1a10;
+    box-shadow: 
+      0 0 0 4px #1a3a24,
+      0 40px 80px rgba(0,0,0,0.6),
+      inset 0 2px 8px rgba(255,255,255,0.04);
+    padding: 3rem 4rem;
+    position: relative;
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .table-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.04;
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 10;
+  }
+
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.65rem 1.5rem;
+    border-radius: 100px;
+    border: 1.5px solid var(--gold-dim);
+    background: transparent;
+    color: var(--gold);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--gold);
+    color: #1a1a1a;
+    border-color: var(--gold);
+  }
+
+  .btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--gold);
+    color: #1a1a1a;
+    border-color: var(--gold);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #e8c46a;
+  }
+
+  .btn-danger {
+    border-color: #8a3a2a;
+    color: #e87a6a;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: #c0392b;
+    color: white;
+    border-color: #c0392b;
+  }
+
+  .board-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 10;
+  }
+
+  .board-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .community-cards {
+    display: flex;
+    gap: 0.75rem;
+    min-height: 90px;
+    align-items: center;
+  }
+
+  .card-slot {
+    width: 60px;
+    height: 88px;
+    border-radius: var(--card-radius);
+    border: 1.5px dashed rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .playing-card {
+    width: 60px;
+    height: 88px;
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    border: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: cardReveal 0.4s ease backwards;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  @keyframes cardReveal {
+    from { transform: rotateY(90deg) scale(0.8); opacity: 0; }
+    to { transform: rotateY(0deg) scale(1); opacity: 1; }
+  }
+
+  .card-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .card-suit {
+    font-size: 1.2rem;
+    line-height: 1;
+    margin-top: 2px;
+  }
+
+  .red { color: #c0392b; }
+  .black { color: #1a1a1a; }
+
+  .street-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 100px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .player-card {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .player-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--gold);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .player-card.winner::before { opacity: 1; }
+
+  .player-card.folded {
+    opacity: var(--folded-opacity);
+    filter: grayscale(0.5);
+  }
+
+  .player-card.winner {
+    border-color: rgba(201,168,76,0.4);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .player-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .player-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  .fold-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.05);
+    border-radius: 100px;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .winner-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: rgba(201,168,76,0.15);
+    border-radius: 100px;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .hole-cards {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .hole-cards .playing-card {
+    width: 46px;
+    height: 68px;
+  }
+
+  .hole-cards .card-rank { font-size: 0.9rem; }
+  .hole-cards .card-suit { font-size: 0.95rem; }
+
+  .equity-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .equity-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .equity-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 100px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 0%;
+  }
+
+  .equity-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--gold);
+    min-width: 42px;
+    text-align: right;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1.2rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 100px;
+    border: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    position: relative;
+    z-index: 10;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+
+  .status-dot.active {
+    background: #4caf76;
+    box-shadow: 0 0 6px #4caf76;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,26,16,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .loading-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 2px solid rgba(201,168,76,0.2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+
+  .error-msg {
+    background: rgba(192,57,43,0.15);
+    border: 1px solid rgba(192,57,43,0.3);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: #e87a6a;
+    text-align: center;
+    display: none;
+  }
+
+  .error-msg.visible { display: block; }
+
+  .game-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(201,168,76,0.4);
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Shuffling deck...</div>
+</div>
+
+<div style="text-align:center; margin-bottom:1.5rem; position:relative; z-index:10;">
+  <h1>Poker Engine</h1>
+  <p class="subtitle">Texas Hold'em · Equity Simulator</p>
+</div>
+
+<div class="table-felt">
+  <div class="table-logo">Poker Engine</div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-new">New Hand</button>
+    <button class="btn" id="btn-next" disabled>Next Street</button>
+    <button class="btn btn-danger" id="btn-fold" disabled>Fold Stage</button>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="board-area">
+    <div class="street-badge" id="street-badge">Waiting for deal</div>
+    <div class="board-label">Community Cards</div>
+    <div class="community-cards" id="community-cards">
+      <div class="card-slot"></div>
+      <div class="card-slot"></div>
+      <div class="card-slot"></div>
+      <div class="card-slot"></div>
+      <div class="card-slot"></div>
+    </div>
+  </div>
+
+  <div class="players-grid" id="players-grid">
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Ready to deal</span>
+    <span class="game-id" id="game-id-label"></span>
+  </div>
+</div>
+
+<script>
+const API = '';
+let gameId = null;
+let equities = {};
+
+const streetNames = ['Pre-Flop', 'Flop', 'Turn', 'River'];
+const suitSymbols = { Spades: '♠', Hearts: '♥', Diamonds: '♦', Clubs: '♣' };
+const suitColors = { Spades: 'black', Hearts: 'red', Diamonds: 'red', Clubs: 'black' };
+
+function setLoading(visible, text = 'Calculating...') {
+  document.getElementById('loading').classList.toggle('visible', visible);
+  document.getElementById('loading-text').textContent = text;
+}
+
+function setError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.toggle('visible', !!msg);
+}
+
+function setStatus(text, active = false) {
+  document.getElementById('status-text').textContent = text;
+  document.getElementById('status-dot').classList.toggle('active', active);
+}
+
+function makeCard(card, delay = 0) {
+  const div = document.createElement('div');
+  div.className = 'playing-card';
+  div.style.animationDelay = delay + 's';
+  const colorClass = suitColors[card.suit] || 'black';
+  div.innerHTML = `
+    <span class="card-rank ${colorClass}">${card.rank}</span>
+    <span class="card-suit ${colorClass}">${suitSymbols[card.suit] || card.suit}</span>
+  `;
+  return div;
+}
+
+function renderBoard(board) {
+  const container = document.getElementById('community-cards');
+  container.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    if (board[i]) {
+      const card = makeCard(board[i], i * 0.08);
+      container.appendChild(card);
+    } else {
+      const slot = document.createElement('div');
+      slot.className = 'card-slot';
+      container.appendChild(slot);
+    }
+  }
+}
+
+function renderPlayers(players, equitiesArr, winners) {
+  const grid = document.getElementById('players-grid');
+  const winnerIds = new Set((winners || []).map(w => w.PlayerID));
+  const equityMap = {};
+  (equitiesArr || []).forEach(e => { equityMap[e.id] = e.equity; });
+
+  grid.innerHTML = '';
+  players.forEach((p, idx) => {
+    const eq = equityMap[p.id] !== undefined ? equityMap[p.id] : p.equity;
+    const isWinner = winnerIds.has(p.id);
+    const div = document.createElement('div');
+    div.className = 'player-card' + (p.folded ? ' folded' : '') + (isWinner ? ' winner' : '');
+
+    const badge = p.folded
+      ? '<span class="fold-badge">Folded</span>'
+      : isWinner
+        ? '<span class="winner-badge">Winner ★</span>'
+        : '';
+
+    const cards = p.holeCards.map((c, i) => makeCard(c, idx * 0.05 + i * 0.08).outerHTML).join('');
+
+    div.innerHTML = `
+      <div class="player-header">
+        <span class="player-name">${p.player_name.split("-").join(" ")}</span>
+        ${badge}
+      </div>
+      <div class="hole-cards">${cards}</div>
+      <div class="equity-bar-wrap">
+        <div class="equity-bar"><div class="equity-fill" data-equity="${eq}"></div></div>
+        <span class="equity-value">${eq.toFixed(1)}%</span>
+      </div>
+    `;
+    grid.appendChild(div);
+  });
+
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.equity-fill').forEach(el => {
+      el.style.width = el.dataset.equity + '%';
+    });
+  });
+}
+
+function renderStreet(street) {
+  const names = ['Pre-Flop', 'Flop', 'Turn', 'River'];
+  document.getElementById('street-badge').textContent = names[street] || 'Done';
+}
+
+function applyState(data) {
+  const gs = data.GameState;
+  const eq = data.Equities || [];
+  gameId = gs.id;
+  document.getElementById('game-id-label').textContent = gs.id ? `Game #${gs.id}` : '';
+  renderStreet(gs.street);
+  renderBoard(gs.board || []);
+  renderPlayers(gs.players || [], eq, gs.winners);
+
+  const done = gs.done;
+  document.getElementById('btn-next').disabled = done;
+  document.getElementById('btn-fold').disabled = done;
+  document.getElementById('btn-new').textContent = done ? 'New Hand' : 'New Hand';
+
+  if (done) {
+    setStatus('Hand complete', false);
+  } else {
+    setStatus('In progress', true);
+  }
+}
+
+async function newGame() {
+  setLoading(true, 'Shuffling deck...');
+  setError('');
+  try {
+    const res = await fetch(`${API}/games/new`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    renderStreet(data.GameState.street);
+    renderBoard([]);
+    const players = data.GameState.players || [];
+    const grid = document.getElementById('players-grid');
+    grid.innerHTML = '';
+    players.forEach((p, idx) => {
+      const div = document.createElement('div');
+      div.className = 'player-card';
+      const cards = p.holeCards.map((c, i) => makeCard(c, idx * 0.06 + i * 0.1).outerHTML).join('');
+      div.innerHTML = `
+        <div class="player-header"><span class="player-name">${p.player_name.split("-").join(" ")}</span></div>
+        <div class="hole-cards">${cards}</div>
+        <div class="equity-bar-wrap">
+          <div class="equity-bar"><div class="equity-fill" data-equity="0"></div></div>
+          <span class="equity-value">—</span>
+        </div>
+      `;
+      grid.appendChild(div);
+    });
+
+    await new Promise(r => setTimeout(r, 800));
+    document.getElementById('loading-text').textContent = 'Calculating equity...';
+    await new Promise(r => setTimeout(r, 400));
+
+    applyState(data);
+
+    document.getElementById('btn-next').disabled = false;
+    document.getElementById('btn-fold').disabled = false;
+    setStatus('Pre-flop dealt', true);
+    gameId = data.GameState.id;
+  } catch (e) {
+    setError('Error: ' + e.message);
+    setStatus('Error', false);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function nextStreet() {
+  if (!gameId) return;
+  setLoading(true, 'Dealing next street...');
+  setError('');
+  try {
+    const res = await fetch(`${API}/games/${gameId}/next`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    await new Promise(r => setTimeout(r, 300));
+    applyState(data);
+  } catch (e) {
+    setError('Error: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function foldStage() {
+  if (!gameId) return;
+  setLoading(true, 'Running fold stage...');
+  setError('');
+  try {
+    const res = await fetch(`${API}/games/${gameId}/fold`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    applyState(data);
+    setStatus('Fold stage complete', true);
+  } catch (e) {
+    setError('Error: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+document.getElementById('btn-new').addEventListener('click', newGame);
+document.getElementById('btn-next').addEventListener('click', nextStreet);
+document.getElementById('btn-fold').addEventListener('click', foldStage);
+</script>
+</body>
+</html>

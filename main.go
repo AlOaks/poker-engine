@@ -15,7 +15,10 @@ func main() {
 		log.Fatalf("%s", err.Error())
 	}
 
-	err = http.ListenAndServe(":8080", routes.Router(db))
+	router := routes.NewAppRouter(db)
+
+	log.Printf("Listening on port: 8080")
+	err = http.ListenAndServe(":8080", router)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
